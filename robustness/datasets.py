@@ -245,8 +245,9 @@ class CIFAR(DataSet):
     def __init__(self, data_path='/tmp/', **kwargs):
         """
         """
+        self.class_names = ["airplane", "automobile", "bird", "car", "deer", "dog", "frog", "horse", "ship", "truck"]
         ds_kwargs = {
-            'num_classes': 10,
+            'num_classes': len(self.class_names),
             'mean': ch.tensor([0.4914, 0.4822, 0.4465]),
             'std': ch.tensor([0.2023, 0.1994, 0.2010]),
             'custom_class': datasets.CIFAR10,
@@ -261,6 +262,27 @@ class CIFAR(DataSet):
         """
         if pretrained:
             raise ValueError('CIFAR does not support pytorch_pretrained=True')
+        return cifar_models.__dict__[arch](num_classes=self.num_classes)
+
+class RobustCIFAR(DataSet):
+    def __init__(self, data_path, **kwargs):
+        self.class_names = ["airplane", "automobile", "bird", "car", "deer", "dog", "frog", "horse", "ship", "truck"]
+        ds_kwargs = {
+            'num_classes': len(self.class_names),
+            'mean': ch.tensor([0.4914, 0.4822, 0.4465]),
+            'std': ch.tensor([0.2023, 0.1994, 0.2010]),
+            'custom_class': None,
+            'label_mapping': None, 
+            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(32),
+            'transform_test': da.TEST_TRANSFORMS_DEFAULT(32)
+        }
+        super(RobustCIFAR, self).__init__('robust_cifar', data_path, **ds_kwargs)
+
+    def get_model(self, arch, pretrained):
+        """
+        """
+        if pretrained:
+            raise ValueError('Robust CIFAR does not support pytorch_pretrained=True')
         return cifar_models.__dict__[arch](num_classes=self.num_classes)
 
 class CINIC(DataSet):
@@ -341,6 +363,7 @@ DATASETS = {
     'imagenet': ImageNet,
     'restricted_imagenet': RestrictedImageNet,
     'cifar': CIFAR,
+    'robustcifar': RobustCIFAR,
     'cinic': CINIC,
     'a2b': A2B
 }
