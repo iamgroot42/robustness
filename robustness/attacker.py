@@ -41,6 +41,7 @@ from . import attack_steps
 STEPS = {
     'inf': attack_steps.LinfStep,
     '2': attack_steps.L2Step,
+    '1': attack_steps.L1Step,
     'unconstrained': attack_steps.UnconstrainedStep,
     'fourier': attack_steps.FourierStep
 }
@@ -71,7 +72,8 @@ class Attacker(ch.nn.Module):
     def forward(self, x, target, *_, constraint, eps, step_size, iterations,
                 random_start=False, random_restarts=False, do_tqdm=False,
                 targeted=False, custom_loss=None, should_normalize=True,
-                orig_input=None, use_best=True, return_image=True, est_grad=None):
+                orig_input=None, use_best=True, return_image=True, est_grad=None,
+                percentile_range=(0.8, 0.995)):
         """
         Implementation of forward (finds adversarial examples). Note that
         this does **not** perform inference and should not be called
@@ -118,6 +120,9 @@ class Attacker(ch.nn.Module):
                 :math:`\\nabla_x f(x) \\approx \\sum_{i=0}^N f(x + R\\cdot
                 \\vec{\\delta_i})\\cdot \\vec{\\delta_i}`, where
                 :math:`\delta_i` are randomly sampled from the unit ball.
+            percentile_range (tuple) : Should be specified if L1 attack is 
+                being used. Defaults to (0.8, 0.995)
+
         Returns:
             An adversarial example for x (i.e. within a feasible set
             determined by `eps` and `constraint`, but classified as:
@@ -141,7 +146,11 @@ class Attacker(ch.nn.Module):
         # Initialize step class and attacker criterion
         criterion = ch.nn.CrossEntropyLoss(reduction='none').cuda()
         step_class = STEPS[constraint] if isinstance(constraint, str) else constraint
-        step = step_class(eps=eps, orig_input=orig_input, step_size=step_size) 
+        if constraint == '1':
+            # Sparse L-1 Descent
+            step = step_class(eps=eps, orig_input=orig_input, step_size=step_size, percentile_range=percentile_range)
+        else:
+            step = step_class(eps=eps, orig_input=orig_input, step_size=step_size) 
 
         def calc_loss(inp, target):
             '''

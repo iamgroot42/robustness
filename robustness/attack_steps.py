@@ -18,7 +18,7 @@ class AttackerStep:
     specified by an "origin input" and a perturbation magnitude.
     Must implement project, step, and random_perturb
     '''
-    def __init__(self, orig_input, eps, step_size, use_grad=True):
+    def __init__(self, orig_input, eps, step_size, use_grad=True, **kwargs):
         '''
         Initialize the attacker step with a given perturbation magnitude.
 
@@ -30,6 +30,7 @@ class AttackerStep:
         self.eps = eps
         self.step_size = step_size
         self.use_grad = use_grad
+        self.kwargs = kwargs
 
     def project(self, x):
         '''
@@ -107,7 +108,7 @@ class LinfStep(AttackerStep):
 # L2 threat model
 class L2Step(AttackerStep):
     """
-    Attack step for :math:`\ell_\infty` threat model. Given :math:`x_0`
+    Attack step for :math:`\ell_2` threat model. Given :math:`x_0`
     and :math:`\epsilon`, the constraint set is given by:
 
     .. math:: S = \{x | \|x - x_0\|_2 \leq \epsilon\}
@@ -180,3 +181,48 @@ class FourierStep(AttackerStep):
         """
         """
         return ch.sigmoid(ch.irfft(x, 2, normalized=True, onesided=False))
+
+# L1 threat model
+class L1Step(AttackerStep):
+    """
+    Attack step for :math:`\ell_1` threat model. Given :math:`x_0`
+    and :math:`\epsilon`, the constraint set is given by:
+
+    .. math:: S = \{x | \|x - x_0\|_1 \leq \epsilon\}
+
+    Uses SLIDE instead of plain PGD for :math:`\ell_1` norm
+    Paper link: (Tramer and Boneh 2019): https://arxiv.org/pdf/1904.13000.pdf
+    """
+    def project(self, x):
+        """
+        """
+        diff = x - self.orig_input
+        diff = diff.renorm(p=1, dim=0, maxnorm=self.eps)
+        return ch.clamp(self.orig_input + diff, 0, 1)
+
+    def step(self, x, g):
+        """
+        """
+        q_range = self.kwargs['percentile_range']
+        q = q_range[0] + ch.rand(1)[0] * (q_range[1] - q_range[0])
+        grad_view = g.view(g.shape[0], -1)
+        abs_grad = ch.abs(grad_view)
+        k = int(q * abs_grad.shape[1])
+
+        sorted_grads, _ = ch.sort(abs_grad, axis=-1)
+        percentile_value = sorted_grads[:, k].unsqueeze(1)
+        percentile_value = percentile_value.repeat(1, grad_view.shape[1])
+
+        e = (abs_grad >= percentile_value) * ch.sign(grad_view)
+        e_norm = ch.sum(e.view(grad_view.shape[0], -1), dim=1).unsqueeze(1)
+
+        scaled_e = e / e_norm
+        scaled_e = scaled_e.view(g.shape)
+
+        return x + scaled_e * self.step_size
+
+    def random_perturb(self, x):
+        """
+        """
+        new_x = x + (ch.rand_like(x) - 0.5).renorm(p=1, dim=1, maxnorm=self.eps)
+        return ch.clamp(new_x, 0, 1)
