@@ -203,26 +203,27 @@ class L1Step(AttackerStep):
     def step(self, x, g):
         """
         """
+        grad_view = g.view(g.shape[0], -1)
+        abs_grad  = ch.abs(grad_view)
+        sign      = ch.sign(grad_view)
+
         q_range = self.kwargs['percentile_range']
         q = q_range[0] + ch.rand(1)[0] * (q_range[1] - q_range[0])
-        grad_view = g.view(g.shape[0], -1)
-        abs_grad = ch.abs(grad_view)
         k = int(q * abs_grad.shape[1])
 
-        sorted_grads, _ = ch.sort(abs_grad, axis=-1)
-        percentile_value = sorted_grads[:, k].unsqueeze(1)
+        percentile_value, _ = ch.kthvalue(abs_grad, k, keepdim=True)
         percentile_value = percentile_value.repeat(1, grad_view.shape[1])
+        tied_for_max = (abs_grad >= percentile_value)
+        num_ties = ch.sum(tied_for_max, dim=1, keepdim=True)
 
-        e = (abs_grad >= percentile_value) * ch.sign(grad_view)
-        e_norm = ch.sum(e.view(grad_view.shape[0], -1), dim=1).unsqueeze(1)
+        e  = (sign * tied_for_max) / num_ties
+        e  =  e.view(g.shape)
 
-        scaled_e = e / e_norm
-        scaled_e = scaled_e.view(g.shape)
-
-        return x + scaled_e * self.step_size
+        return x + e * self.step_size
 
     def random_perturb(self, x):
         """
         """
-        new_x = x + (ch.rand_like(x) - 0.5).renorm(p=1, dim=1, maxnorm=self.eps)
+        m = ch.distributions.laplace.Laplace(ch.tensor([0.0]), torch.tensor([1.0]))
+        new_x = x + m.sample(x.shape).renorm(p=1, dim=1, maxnorm=self.eps)
         return ch.clamp(new_x, 0, 1)
