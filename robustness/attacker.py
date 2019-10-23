@@ -146,11 +146,7 @@ class Attacker(ch.nn.Module):
         # Initialize step class and attacker criterion
         criterion = ch.nn.CrossEntropyLoss(reduction='none').cuda()
         step_class = STEPS[constraint] if isinstance(constraint, str) else constraint
-        if constraint == '1':
-            # Sparse L-1 Descent
-            step = step_class(eps=eps, orig_input=orig_input, step_size=step_size, percentile_range=percentile_range)
-        else:
-            step = step_class(eps=eps, orig_input=orig_input, step_size=step_size) 
+        step = step_class(eps=eps, orig_input=orig_input, step_size=step_size, percentile_range=percentile_range)
 
         def calc_loss(inp, target):
             '''

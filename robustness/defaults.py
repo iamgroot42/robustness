@@ -82,6 +82,7 @@ PGD_ARGS = [
     ['use-best', [0, 1], 'if 1 (0) use best (final) PGD step as example', 1],
     ['random-restarts', int, 'number of random PGD restarts for eval', 0],
     ['eps-fadein-epochs', int, 'fade in eps over this many iterations', 0],
+    ['percentile_range', tuple, 'percentile range to sample from (for L-1 attack)', (0.8, 0.995)],
 ]
 """
 Arguments essential for the :meth:`robustness.train.train_model` function if
