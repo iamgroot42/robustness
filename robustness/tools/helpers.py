@@ -184,6 +184,9 @@ def get_label_mapping(dataset_name, ranges):
     elif dataset_name == 'restricted_imagenet':
         def label_mapping(classes, class_to_idx):
             return restricted_label_mapping(classes, class_to_idx, ranges=ranges)
+    elif dataset_name == 'binary_cifar':
+        def label_mapping(classes, class_to_idx):
+            return restricted_binary_mapping(classes, class_to_idx, index_clusters=ranges)
     else:
         raise ValueError('No such dataset_name %s' % dataset_name)
 
@@ -203,4 +206,14 @@ def restricted_label_mapping(classes, class_to_idx, ranges):
                 mapping[class_name] = new_idx
         # assert class_name in mapping
     filtered_classes = list(mapping.keys()).sort()
+    return filtered_classes, mapping
+
+def restricted_binary_mapping(classes, class_to_idx, index_clusters):
+    mapping = {}
+    for class_name, idx in class_to_idx.items():
+        for new_idx, index_cluster in enumerate(index_clusters):
+            if idx in index_cluster:
+                mapping[class_name] = new_idx
+    filtered_classes = list(mapping.keys()).sort()
+    print(filtered_classes, mapping)
     return filtered_classes, mapping

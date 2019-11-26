@@ -98,7 +98,7 @@ class DataSet(object):
 
     def make_loaders(self, workers, batch_size, data_aug=True, subset=None, 
                      subset_start=0, subset_type='rand', val_batch_size=None,
-                     only_val=False):
+                     only_val=False, fixed_test_order=False):
         '''
         Args:
             workers (int) : number of workers for data fetching (*required*).
@@ -117,6 +117,8 @@ class DataSet(object):
                 different batch size for the validation set loader.
             only_val (bool) : If `True`, returns `None` in place of the
                 training data loader
+            fixed_test_order (bool) : If `True`, returns test batches in fixed
+                order.
 
         Returns:
             A training loader and validation loader according to the
@@ -140,7 +142,8 @@ class DataSet(object):
                                     subset=subset,
                                     subset_start=subset_start,
                                     subset_type=subset_type,
-                                    only_val=only_val)
+                                    only_val=only_val,
+                                    fixed_test_order=fixed_test_order)
 
 class ImageNet(DataSet):
     '''
@@ -221,6 +224,43 @@ class RestrictedImageNet(DataSet):
             raise ValueError("Dataset doesn't support pytorch_pretrained")
         return imagenet_models.__dict__[arch](num_classes=self.num_classes)
 
+
+class GenericBinary(DataSet):
+    """
+    CIFAR-10 dataset [Kri09]_.
+
+    A dataset with 50k training images and 10k testing images, with the
+    following classes (clubbed into binary):
+
+    * Animals: [Bird, Cat, Deer, Dog, Frog, Horse]
+    * Not-animals: [Airplane, Automobile, Ship, Truck]
+
+    .. [Kri09] Krizhevsky, A (2009). Learning Multiple Layers of Features
+        from Tiny Images. Technical Report.
+    """
+    def __init__(self, data_path, **kwargs):
+        """
+        """
+        ds_name = 'generic_binary'
+        ds_kwargs = {
+            'num_classes': 2,
+            'mean': ch.tensor([0.4914, 0.4822, 0.4465]),
+            'std': ch.tensor([0.2023, 0.1994, 0.2010]),
+            'custom_class': None,
+            'label_mapping': None, 
+            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(32),
+            'transform_test': da.TEST_TRANSFORMS_DEFAULT(32)
+        }
+        super(GenericBinary, self).__init__(ds_name, data_path, **ds_kwargs)
+
+    def get_model(self, arch, pretrained):
+        """
+        """
+        if pretrained:
+            raise ValueError('GenericBinary does not support pytorch_pretrained=True')
+        return cifar_models.__dict__[arch](num_classes=self.num_classes)
+
+
 class CIFAR(DataSet):
     """
     CIFAR-10 dataset [Kri09]_.
@@ -263,6 +303,7 @@ class CIFAR(DataSet):
         if pretrained:
             raise ValueError('CIFAR does not support pytorch_pretrained=True')
         return cifar_models.__dict__[arch](num_classes=self.num_classes)
+
 
 class RobustCIFAR(DataSet):
     def __init__(self, data_path, **kwargs):
@@ -362,6 +403,7 @@ class A2B(DataSet):
 DATASETS = {
     'imagenet': ImageNet,
     'restricted_imagenet': RestrictedImageNet,
+    'generic_binary': GenericBinary,
     'cifar': CIFAR,
     'robustcifar': RobustCIFAR,
     'cinic': CINIC,

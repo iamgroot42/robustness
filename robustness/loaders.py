@@ -23,7 +23,7 @@ from . import imagenet_models as models
 def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
                 custom_class=None, dataset="", label_mapping=None, subset=None,
                 subset_type='rand', subset_start=0, val_batch_size=None,
-                only_val=False, seed=1):
+                only_val=False, seed=1, fixed_test_order=False):
     '''
     **INTERNAL FUNCTION**
 
@@ -86,7 +86,7 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
             shuffle=True, num_workers=workers, pin_memory=True)
 
     test_loader = DataLoader(test_set, batch_size=val_batch_size, 
-            shuffle=True, num_workers=workers, pin_memory=True)
+            shuffle=(not fixed_test_order), num_workers=workers, pin_memory=True)
 
     if only_val:
         return None, test_loader
