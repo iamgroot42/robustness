@@ -285,7 +285,7 @@ class CIFAR(DataSet):
     def __init__(self, data_path='/tmp/', **kwargs):
         """
         """
-        self.class_names = ["airplane", "automobile", "bird", "car", "deer", "dog", "frog", "horse", "ship", "truck"]
+        self.class_names = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
         ds_kwargs = {
             'num_classes': len(self.class_names),
             'mean': ch.tensor([0.4914, 0.4822, 0.4465]),
@@ -307,7 +307,7 @@ class CIFAR(DataSet):
 
 class RobustCIFAR(DataSet):
     def __init__(self, data_path, **kwargs):
-        self.class_names = ["airplane", "automobile", "bird", "car", "deer", "dog", "frog", "horse", "ship", "truck"]
+        self.class_names = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
         ds_kwargs = {
             'num_classes': len(self.class_names),
             'mean': ch.tensor([0.4914, 0.4822, 0.4465]),

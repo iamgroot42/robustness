@@ -115,14 +115,27 @@ class ResNet(nn.Module):
     def forward(self, x, with_latent=False, fake_relu=False, no_relu=False):
         assert (not no_relu),  \
             "no_relu not yet supported for this architecture"
+
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
+        # if with_latent == 1:
+        #     specific_pre_out = out
         out = self.layer2(out)
+        # if with_latent == 2:
+        #     specific_pre_out = out
         out = self.layer3(out)
+        # if with_latent == 3:
+        #     specific_pre_out = out
         out = self.layer4(out, fake_relu=fake_relu)
         out = F.avg_pool2d(out, 4)
         pre_out = out.view(out.size(0), -1)
         final = self.linear(pre_out)
+        # if type(with_latent) == int:
+        #     if with_latent <= 3 and with_latent >= 1:
+        #         return final, specific_pre_out
+        #     else:
+        #         print("Invalid layer activation requested. Defaulting to pre-logit activations")
+        #         return final, pre_out
         if with_latent:
             return final, pre_out
         return final

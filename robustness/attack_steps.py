@@ -213,7 +213,7 @@ class L1Step(AttackerStep):
 
         percentile_value, _ = ch.kthvalue(abs_grad, k, keepdim=True)
         percentile_value = percentile_value.repeat(1, grad_view.shape[1])
-        tied_for_max = (abs_grad >= percentile_value)
+        tied_for_max = ch.ge(abs_grad, percentile_value).int().float()
         num_ties = ch.sum(tied_for_max, dim=1, keepdim=True)
 
         e  = (sign * tied_for_max) / num_ties
