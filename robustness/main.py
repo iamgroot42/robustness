@@ -39,12 +39,11 @@ def main(args, store=None):
     dataset = DATASETS[args.dataset](data_path)
 
     train_loader, val_loader = dataset.make_loaders(args.workers,
-                    args.batch_size, data_aug=bool(args.data_aug))
+                    args.batch_size, data_aug=bool(args.data_aug),
+                    only_val=args.eval_only)
 
-    train_loader = helpers.DataPrefetcher(train_loader)
     val_loader = helpers.DataPrefetcher(val_loader)
-    loaders = (train_loader, val_loader)
-
+    
     # MAKE MODEL
     model, checkpoint = make_and_restore_model(arch=args.arch,
             dataset=dataset, resume_path=args.resume)
@@ -53,6 +52,9 @@ def main(args, store=None):
     print(args)
     if args.eval_only:
         return eval_model(args, model, val_loader, store=store)
+
+    train_loader = helpers.DataPrefetcher(train_loader)
+    loaders = (train_loader, val_loader)
 
     model = train_model(args, model, loaders, store=store)
     return model
