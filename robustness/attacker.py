@@ -73,7 +73,7 @@ class Attacker(ch.nn.Module):
                 random_start=False, random_restarts=False, do_tqdm=False,
                 targeted=False, custom_loss=None, should_normalize=True,
                 orig_input=None, use_best=True, return_image=True, est_grad=None,
-                percentile_range=(0.8, 0.995)):
+                percentile_range=(0.8, 0.995), custom_best=None):
         """
         Implementation of forward (finds adversarial examples). Note that
         this does **not** perform inference and should not be called
@@ -122,6 +122,8 @@ class Attacker(ch.nn.Module):
                 :math:`\delta_i` are randomly sampled from the unit ball.
             percentile_range (tuple) : Should be specified if L1 attack is 
                 being used. Defaults to (0.8, 0.995)
+            custom_best (function(loss, x)) : If not None, use this to identify 'best'
+                loss (need not be the function being optimized)
 
         Returns:
             An adversarial example for x (i.e. within a feasible set
@@ -181,7 +183,10 @@ class Attacker(ch.nn.Module):
                     bx = x.clone().detach()
                     bloss = losses.clone().detach()
                 else:
-                    replace = m * bloss < m * loss
+                    if custom_best is None:
+                        replace = m * bloss < m * loss
+                    else:
+                        replace = m * custom_best(bloss, bx) < m * custom_best(loss, x)
                     bx[replace] = x[replace].clone().detach()
                     bloss[replace] = loss[replace]
 
