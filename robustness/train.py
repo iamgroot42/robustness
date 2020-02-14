@@ -349,6 +349,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
     losses = AverageMeter()
     top1 = AverageMeter()
     top5 = AverageMeter()
+    if has_attr(args, "regularizer"): regs = AverageMeter()
 
     prec = 'NatPrec' if not adv else 'AdvPrec'
     loop_msg = 'Train' if loop_type == 'train' else 'Val'
@@ -414,6 +415,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         reg_term = 0.0
         if has_attr(args, "regularizer"):
             reg_term =  args.regularizer(model, inp, target)
+            regs.update(reg_term.item(), inp.size(0))
         loss = loss + reg_term
 
         # compute gradient and do SGD step
@@ -421,6 +423,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
             opt.zero_grad()
             loss.backward()
             opt.step()
+
         elif adv and i == 0 and writer:
             # add some examples to the tensorboard
             nat_grid = make_grid(inp[:15, ...])
@@ -428,11 +431,15 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
             writer.add_image('Nat input', nat_grid, epoch)
             writer.add_image('Adv input', adv_grid, epoch)
 
+        if has_attr(args, "regularizer"):
+            reg_desc = regs.avg
+        else:
+            reg_desc = reg_term
         # ITERATOR
         desc = ('{2} Epoch:{0} | Loss {loss.avg:.4f} | '
                 '{1}1 {top1_acc:.3f} | {1}5 {top5_acc:.3f} | '
-                'Reg term: {reg} ||'.format( epoch, prec, loop_msg, 
-                loss=losses, top1_acc=top1_acc, top5_acc=top5_acc, reg=reg_term))
+                'Reg term: {reg:.4f} ||'.format( epoch, prec, loop_msg, 
+                loss=losses, top1_acc=top1_acc, top5_acc=top5_acc, reg=reg_desc))
 
         # USER-DEFINED HOOK
         if has_attr(args, 'iteration_hook'):
