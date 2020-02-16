@@ -216,6 +216,9 @@ def train_model(args, model, loaders, *, checkpoint=None, store=None):
                 given arguments `model, log_info` where `log_info` is a
                 dictionary with keys `epoch, nat_prec1, adv_prec1, nat_loss,
                 adv_loss, train_prec1, train_loss`.
+            use_adv_eval_criteria (int or bool, optional)
+                Use top-1 accuracy on adversarial data (validation), even if
+                training mode is not adversarial
 
         model (AttackerModel) : the model to train.
         loaders (tuple[iterable]) : `tuple` of data loaders of the form
@@ -287,7 +290,7 @@ def train_model(args, model, loaders, *, checkpoint=None, store=None):
             adv_prec1, adv_loss = adv_val or (-1.0, -1.0)
 
             # remember best prec@1 and save checkpoint
-            our_prec1 = adv_prec1 if args.adv_train else prec1
+            our_prec1 = adv_prec1 if (args.adv_train or args.use_adv_eval_criteria) else prec1
             is_best = our_prec1 > best_prec1
             best_prec1 = max(our_prec1, best_prec1)
 
@@ -452,6 +455,9 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         prec_type = 'adv' if adv else 'nat'
         descs = ['loss', 'top1', 'top5']
         vals = [losses, top1, top5]
+        if has_attr(args, "regularizer"):
+            descs.append('reg')
+            vals.append(regs)
         for d, v in zip(descs, vals):
             writer.add_scalar('_'.join([prec_type, loop_type, d]), v.avg,
                               epoch)
