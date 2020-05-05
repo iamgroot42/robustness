@@ -15,12 +15,29 @@ class VGG(nn.Module):
         self.features = self._make_layers(cfg[vgg_name])
         self.classifier = nn.Linear(512, 10)
 
-    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False):
+    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False, injection=None, this_layer_input=None, this_layer_output=None):
         assert (not fake_relu) and (not no_relu),  \
             "fake_relu and no_relu not yet supported for this architecture"
-        out = self.features(x)
+        # Iterative pass through layers instead of direct call on sequential
+        if injection is None and this_layer_output is None:
+            out = self.features(x)
+        elif this_layer_output is None:
+            out = x
+            for i, layer in enumerate(self.features):
+                out = layer(out)
+                if i == injection[0]:
+                    with torch.no_grad():
+                        out += injection[1].view_as(out)
+        else:
+            out = x
+            for i, layer in enumerate(self.features):
+                out = layer(out)
+                if i == this_layer_output:
+                    wanted_latent = out
         latent = out.view(out.size(0), -1)
         out = self.classifier(latent)
+        if this_layer_output != None:
+            return out, wanted_latent
         if with_latent:
             return out, latent
         return out
@@ -38,6 +55,7 @@ class VGG(nn.Module):
                 in_channels = x
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
         return nn.Sequential(*layers)
+
 
 def VGG11(**kwargs):
     return VGG('VGG11', **kwargs)

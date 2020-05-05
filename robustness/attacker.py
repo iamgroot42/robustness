@@ -73,7 +73,8 @@ class Attacker(ch.nn.Module):
                 random_start=False, random_restarts=False, do_tqdm=False,
                 targeted=False, custom_loss=None, should_normalize=True,
                 orig_input=None, use_best=True, return_image=True, est_grad=None,
-                percentile_range=(0.8, 0.995), custom_best=None):
+                percentile_range=(0.8, 0.995), custom_best=None,
+                random_restart_targets=None):
         """
         Implementation of forward (finds adversarial examples). Note that
         this does **not** perform inference and should not be called
@@ -124,6 +125,8 @@ class Attacker(ch.nn.Module):
                 being used. Defaults to (0.8, 0.995)
             custom_best (function(loss, x)) : If not None, use this to identify 'best'
                 loss (need not be the function being optimized)
+            random_restart_targets (ch.tensor) : if provided, use for calculation of
+                accuracy instead of given targets (for random_restarts)
 
         Returns:
             An adversarial example for x (i.e. within a feasible set
@@ -195,7 +198,7 @@ class Attacker(ch.nn.Module):
             # PGD iterates
             for _ in iterator:
                 x = x.clone().detach().requires_grad_(True)
-                losses, out = calc_loss(step.to_image(x), target)
+                losses, _ = calc_loss(step.to_image(x), target)
                 assert losses.shape[0] == x.shape[0], \
                         'Shape of losses must match input!'
 
@@ -241,7 +244,10 @@ class Attacker(ch.nn.Module):
                     to_ret = adv.detach()
 
                 _, output = calc_loss(adv, target)
-                corr, = helpers.accuracy(output, target, topk=(1,), exact=True)
+                if random_restart_targets is None:
+                    corr, = helpers.accuracy(output, target, topk=(1,), exact=True)
+                else:
+                    corr, = helpers.accuracy(output, random_restart_targets, topk=(1,), exact=True)
                 corr = corr.byte()
                 misclass = ~corr
                 to_ret[misclass] = adv[misclass]
@@ -277,7 +283,9 @@ class AttackerModel(ch.nn.Module):
         self.attacker = Attacker(model, dataset)
 
     def forward(self, inp, target=None, make_adv=False, with_latent=False,
-                fake_relu=False, no_relu=False, with_image=True, **attacker_kwargs):
+                fake_relu=False, no_relu=False, injection=None, this_layer_input=None,
+                this_layer_output=None,  with_image=True, skip_normalize=False,
+                **attacker_kwargs):
         """
         Main function for running inference and generating adversarial
         examples for a model.
@@ -306,6 +314,12 @@ class AttackerModel(ch.nn.Module):
                 visible effect without :samp:`with_latent=True`.
             with_image (bool) : if :samp:`False`, only return the model output
                 (even if :samp:`make_adv == True`).
+            injection (tuple) : If not None, asks model to add vector to output
+                of a specific layers output
+            this_layer_input (int) : If not None, feeds input to this specific layer, 
+                instead of the normal input layer
+            this_layer_output (int) : If not None, returns output of specific layer's
+                output instead of pre-logits activations
 
         """
         if make_adv:
@@ -318,8 +332,16 @@ class AttackerModel(ch.nn.Module):
 
             inp = adv
 
+        if this_layer_input is not None and this_layer_output is not None:
+            if this_layer_input >= this_layer_output:
+                raise ValueError("Cannot extract output of layer before input layer")
+
         if with_image:
-            normalized_inp = self.normalizer(inp)
+            # Run normalization only when input is being fed to actual input layer
+            if this_layer_input:
+                normalized_inp = inp
+            else:
+                normalized_inp = self.normalizer(inp)
 
             if no_relu and (not with_latent):
                 print("WARNING: 'no_relu' has no visible effect if 'with_latent is False.")
@@ -327,7 +349,10 @@ class AttackerModel(ch.nn.Module):
                 raise ValueError("Options 'no_relu' and 'fake_relu' are exclusive")
 
             output = self.model(normalized_inp, with_latent=with_latent,
-                                    fake_relu=fake_relu, no_relu=no_relu)
+                                    fake_relu=fake_relu, no_relu=no_relu,
+                                    injection=injection,
+                                    this_layer_input=this_layer_input,
+                                    this_layer_output=this_layer_output)
         else:
             output = None
 

@@ -72,7 +72,8 @@ TRAINING_ARGS = [
     ['log-iters', int, 'how frequently (in epochs) to log', 5],
     ['save-ckpt-iters', int, 'how frequently (epochs) to save \
             (-1 for none, only saves best and last)', -1],
-    ['use-adv-eval-criteria', [0, 1], 'whether to use adv-eval criteria to save', None]
+    ['use-adv-eval-criteria', [0, 1], 'whether to use adv-eval criteria to save', None],
+    ['let_reg_handle_loss', [0, 1], 'whether to compute loss inside regularization function', None]
 ]
 """
 Arguments essential for the `train_model` function.

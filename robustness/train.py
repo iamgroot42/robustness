@@ -217,8 +217,11 @@ def train_model(args, model, loaders, *, checkpoint=None, store=None):
                 dictionary with keys `epoch, nat_prec1, adv_prec1, nat_loss,
                 adv_loss, train_prec1, train_loss`.
             use_adv_eval_criteria (int or bool, optional)
-                Use top-1 accuracy on adversarial data (validation), even if
-                training mode is not adversarial
+                Use top-1 accuracy on adversarial data (validation) for best loss,
+                even if training mode is not adversarial
+            let_reg_handle_loss (int or bool, optional)
+                Let regularization function the whole loss, not just the 
+                extra term added to the main loss.
 
         model (AttackerModel) : the model to train.
         loaders (tuple[iterable]) : `tuple` of data loaders of the form
@@ -387,13 +390,25 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
             'use_best': bool(args.use_best)
         }
 
+    let_reg_handle_loss = False
+    if has_attr(args, 'let_reg_handle_loss') and args.let_reg_handle_loss: let_reg_handle_loss = True
+
     iterator = tqdm(enumerate(loader), total=len(loader))
     for i, (inp, target) in iterator:
        # measure data loading time
         target = target.cuda(non_blocking=True)
-        output, final_inp = model(inp, target=target, make_adv=adv,
-                                  **attack_kwargs)
-        loss = train_criterion(output, target)
+        if not let_reg_handle_loss:
+            output, final_inp = model(inp, target=target, make_adv=adv,
+                                    **attack_kwargs)
+            loss = train_criterion(output, target)
+
+        reg_term = 0.0
+        if has_attr(args, "regularizer"):
+            if let_reg_handle_loss:
+                (output, final_inp, loss, reg_term) =  args.regularizer(model, inp, target, train_criterion, adv, attack_kwargs)
+            else:
+                reg_term =  args.regularizer(model, inp, target)
+            regs.update(reg_term.item(), inp.size(0))
 
         if len(loss.shape) > 0: loss = loss.mean()
 
@@ -415,10 +430,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         except:
             pass
 
-        reg_term = 0.0
-        if has_attr(args, "regularizer"):
-            reg_term =  args.regularizer(model, inp, target)
-            regs.update(reg_term.item(), inp.size(0))
+        # Add regularization term to loss
         loss = loss + reg_term
 
         # compute gradient and do SGD step
