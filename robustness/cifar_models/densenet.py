@@ -80,7 +80,7 @@ class DenseNet(nn.Module):
             in_planes += self.growth_rate
         return nn.Sequential(*layers)
 
-    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False):
+    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False, injection=None, this_layer_input=None, this_layer_output=None, just_latent=False):
         assert not no_relu, \
             "DenseNet has no pre-ReLU activations, no_relu not supported"
         out = self.conv1(x)
@@ -94,6 +94,9 @@ class DenseNet(nn.Module):
             out = F.avg_pool2d(FakeReLU.apply(self.bn(out)), 4)
         out = out.view(out.size(0), -1)
         latent = out
+
+        if just_latent: return out
+
         out = self.linear(out)
 
         if with_latent:

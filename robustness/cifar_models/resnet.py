@@ -112,7 +112,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return SequentialWithArgs(*layers)
 
-    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False):
+    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False, injection=None, this_layer_input=None, this_layer_output=None, just_latent=False):
         assert (not no_relu),  \
             "no_relu not yet supported for this architecture"
 
@@ -129,6 +129,9 @@ class ResNet(nn.Module):
         out = self.layer4(out, fake_relu=fake_relu)
         out = F.avg_pool2d(out, 4)
         pre_out = out.view(out.size(0), -1)
+
+        if just_latent: return pre_out
+        
         final = self.linear(pre_out)
         # if type(with_latent) == int:
         #     if with_latent <= 3 and with_latent >= 1:

@@ -35,6 +35,12 @@ TRAINING_DEFAULTS = {
         "weight_decay":5e-4,
         "step_lr": 50
     },
+    datasets.SVHN: {
+        "epochs": 150,
+        "batch_size": 128,
+        "weight_decay":5e-4,
+        "step_lr": 50
+    },
     datasets.ImageNet: {
         "epochs": 350,
         "batch_size":256,

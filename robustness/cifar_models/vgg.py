@@ -7,6 +7,9 @@ cfg = {
     'VGG13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'VGG16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'VGG19': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+    'VGG19_128': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 128, 'M'],
+    'VGG19_64': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 64, 'M'],
+    'VGG19_32': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 32, 'M'],
 }
 
 class VGG(nn.Module):
@@ -15,7 +18,7 @@ class VGG(nn.Module):
         self.features = self._make_layers(cfg[vgg_name])
         self.classifier = nn.Linear(512, 10)
 
-    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False, injection=None, this_layer_input=None, this_layer_output=None):
+    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False, injection=None, this_layer_input=None, this_layer_output=None, just_latent=False):
         assert (not fake_relu) and (not no_relu),  \
             "fake_relu and no_relu not yet supported for this architecture"
         if injection is None and this_layer_output is None and this_layer_input is None:
@@ -41,8 +44,13 @@ class VGG(nn.Module):
                         out += injection[1].view_as(out)
                 if this_layer_output is not None and i == this_layer_output:
                     wanted_latent = out
+                    # Stop computation at latent space if only that is needed
+                    if just_latent: return wanted_latent
 
         latent = out.view(out.size(0), -1)
+        # Stop computation at latent space if only that is needed
+        if just_latent: return latent
+
         out = self.classifier(latent)
         if this_layer_output != None:
             return out, wanted_latent
@@ -77,7 +85,22 @@ def VGG16(**kwargs):
 def VGG19(**kwargs):
     return VGG('VGG19', **kwargs)
 
+def VGG19(**kwargs):
+    return VGG('VGG19', **kwargs)
+
+def VGG19_128(**kwargs):
+    return VGG('VGG19_128', **kwargs)
+
+def VGG19_64(**kwargs):
+    return VGG('VGG19_64', **kwargs)
+
+def VGG19_32(**kwargs):
+    return VGG('VGG19_32', **kwargs)
+
 vgg11 = VGG11
 vgg13 = VGG13
 vgg16 = VGG16
 vgg19 = VGG19
+vgg19_128 = VGG19_128
+vgg19_64 = VGG19_64
+vgg19_32 = VGG19_32

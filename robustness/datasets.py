@@ -8,6 +8,7 @@ Currently supported datasets:
 - RestrictedImageNet (:class:`robustness.datasets.RestrictedImageNet`)
 - CIFAR-10 (:class:`robustness.datasets.CIFAR`)
 - CINIC-10 (:class:`robustness.datasets.CINIC`)
+- SVHN (:class:`robustness.datasets.SVHN`)
 - A2B: horse2zebra, summer2winter_yosemite, apple2orange
   (:class:`robustness.datasets.A2B`)
 
@@ -36,6 +37,7 @@ from .tools.helpers import get_label_mapping
 ## Other Datasets:
 ## - CIFAR
 ## - CINIC
+## - SVHN
 ## - A2B (orange2apple, horse2zebra, etc)
 ###
 
@@ -98,7 +100,7 @@ class DataSet(object):
 
     def make_loaders(self, workers, batch_size, data_aug=True, subset=None, 
                      subset_start=0, subset_type='rand', val_batch_size=None,
-                     only_val=False, fixed_test_order=False):
+                     only_val=False, fixed_train_order=False, fixed_test_order=False):
         '''
         Args:
             workers (int) : number of workers for data fetching (*required*).
@@ -117,6 +119,8 @@ class DataSet(object):
                 different batch size for the validation set loader.
             only_val (bool) : If `True`, returns `None` in place of the
                 training data loader
+            fixed_train_order (bool) : If `True`, returns train batches in fixed
+                order.
             fixed_test_order (bool) : If `True`, returns test batches in fixed
                 order.
 
@@ -143,6 +147,7 @@ class DataSet(object):
                                     subset_start=subset_start,
                                     subset_type=subset_type,
                                     only_val=only_val,
+                                    fixed_train_order=fixed_train_order,
                                     fixed_test_order=fixed_test_order)
 
 class ImageNet(DataSet):
@@ -154,7 +159,9 @@ class ImageNet(DataSet):
     `here <https://pytorch.org/docs/master/torchvision/datasets.html#torchvision.datasets.ImageFolder>`_
     for more information about the format.
 
-    .. [DDS+09] Deng, J., Dong, W., Socher, R., Li, L., Li, K., & Fei-Fei, L. (2009). ImageNet: A large-scale hierarchical image database. 2009 IEEE Conference on Computer Vision and Pattern Recognition, 248-255.
+    .. [DDS+09] Deng, J., Dong, W., Socher, R., Li, L., Li, K., & Fei-Fei, L. (2009).
+    ImageNet: A large-scale hierarchical image database.
+    2009 IEEE Conference on Computer Vision and Pattern Recognition, 248-255.
 
     '''
     def __init__(self, data_path, **kwargs):
@@ -326,6 +333,7 @@ class RobustCIFAR(DataSet):
             raise ValueError('Robust CIFAR does not support pytorch_pretrained=True')
         return cifar_models.__dict__[arch](num_classes=self.num_classes)
 
+
 class CINIC(DataSet):
     """
     CINIC-10 dataset [DCA+18]_.
@@ -358,6 +366,36 @@ class CINIC(DataSet):
         if pretrained:
             raise ValueError('CINIC does not support pytorch_pretrained=True')
         return cifar_models.__dict__[arch](num_classes=self.num_classes)
+
+
+class SVHN(DataSet):
+    """
+    `SVHN <http://ufldl.stanford.edu/housenumbers/>`_ Dataset.
+    Note: The SVHN dataset assigns the label `10` to the digit `0`. However, in this Dataset,
+    we assign the label `0` to the digit `0` to be compatible with PyTorch loss functions which
+    expect the class labels to be in the range `[0, C-1]`
+    """
+    def __init__(self, data_path='/tmp/', **kwargs):
+        """
+        """
+        ds_kwargs = {
+            'num_classes': 10,
+            'mean': ch.tensor([0.4914, 0.4822, 0.4465]),
+            'std': ch.tensor([0.2023, 0.1994, 0.2010]),
+            'custom_class': datasets.SVHN,
+            'label_mapping': None, 
+            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(32),
+            'transform_test': da.TEST_TRANSFORMS_DEFAULT(32)
+        }
+        super(SVHN, self).__init__('svhn', data_path, **ds_kwargs)
+
+    def get_model(self, arch, pretrained):
+        """
+        """
+        if pretrained:
+            raise ValueError('SVHN does not support pytorch_pretrained=True')
+        return cifar_models.__dict__[arch](num_classes=self.num_classes)
+
 
 class A2B(DataSet):
     """
@@ -407,6 +445,7 @@ DATASETS = {
     'cifar': CIFAR,
     'robustcifar': RobustCIFAR,
     'cinic': CINIC,
+    'svhn': SVHN,
     'a2b': A2B
 }
 '''

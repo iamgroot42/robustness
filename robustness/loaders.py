@@ -23,7 +23,8 @@ from . import imagenet_models as models
 def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
                 custom_class=None, dataset="", label_mapping=None, subset=None,
                 subset_type='rand', subset_start=0, val_batch_size=None,
-                only_val=False, seed=1, fixed_test_order=False):
+                only_val=False, seed=1,
+                fixed_train_order=False, fixed_test_order=False):
     '''
     **INTERNAL FUNCTION**
 
@@ -59,10 +60,19 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
                                       label_mapping=label_mapping)
     else:
         if not only_val:
-            train_set = custom_class(root=data_path, train=True, 
-                                        download=True, transform=transform_train)
-        test_set = custom_class(root=data_path, train=False, 
-                                    download=True, transform=transform_test)
+            # Some classes use split argument instead of train, so try both possible calls
+            try:
+                train_set = custom_class(root=data_path, train=True, 
+                                            download=True, transform=transform_train)
+            except:
+                train_set = custom_class(root=data_path, split='train', 
+                                            download=True, transform=transform_train)
+        try:
+            test_set = custom_class(root=data_path, train=False, 
+                                        download=True, transform=transform_test)
+        except:
+            test_set = custom_class(root=data_path, split='test', 
+                                        download=True, transform=transform_test)
 
     if subset is not None:
         assert not only_val
@@ -83,7 +93,7 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
 
     if not only_val:
         train_loader = DataLoader(train_set, batch_size=batch_size, 
-            shuffle=True, num_workers=workers, pin_memory=True)
+            shuffle=(not fixed_train_order), num_workers=workers, pin_memory=True)
 
     test_loader = DataLoader(test_set, batch_size=val_batch_size, 
             shuffle=(not fixed_test_order), num_workers=workers, pin_memory=True)

@@ -151,7 +151,8 @@ class ResNet(nn.Module):
 
         return SequentialWithArgs(*layers)
 
-    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False):
+    def forward(self, x, with_latent=False, fake_relu=False, no_relu=False, injection=None, this_layer_input=None, this_layer_output=None, just_latent=False):
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -164,6 +165,8 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         pre_out = x.view(x.size(0), -1)
+        if just_latent:
+            return pre_out
         final = self.fc(pre_out)
         if with_latent:
             return final, pre_out

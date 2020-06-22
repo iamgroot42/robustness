@@ -285,7 +285,7 @@ class AttackerModel(ch.nn.Module):
     def forward(self, inp, target=None, make_adv=False, with_latent=False,
                 fake_relu=False, no_relu=False, injection=None, this_layer_input=None,
                 this_layer_output=None,  with_image=True, skip_normalize=False,
-                **attacker_kwargs):
+                just_latent=False, **attacker_kwargs):
         """
         Main function for running inference and generating adversarial
         examples for a model.
@@ -320,7 +320,8 @@ class AttackerModel(ch.nn.Module):
                 instead of the normal input layer
             this_layer_output (int) : If not None, returns output of specific layer's
                 output instead of pre-logits activations
-
+            just_latent (bool): If True, return omly output of latent space. 
+                Skip computations beyond that point (as they're not required)
         """
         if make_adv:
             assert target is not None
@@ -352,7 +353,8 @@ class AttackerModel(ch.nn.Module):
                                     fake_relu=fake_relu, no_relu=no_relu,
                                     injection=injection,
                                     this_layer_input=this_layer_input,
-                                    this_layer_output=this_layer_output)
+                                    this_layer_output=this_layer_output,
+                                    just_latent=just_latent)
         else:
             output = None
 
