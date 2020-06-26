@@ -11,6 +11,8 @@ from .tools import constants as consts
 import dill 
 import time
 
+from colorama import Fore, Style
+
 import os
 if int(os.environ.get("NOTEBOOK_MODE", 0)) == 1:
     from tqdm import tqdm_notebook as tqdm
@@ -358,7 +360,10 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
     if has_attr(args, "regularizer"): regs = AverageMeter()
 
     prec = 'NatPrec' if not adv else 'AdvPrec'
-    loop_msg = 'Train' if loop_type == 'train' else 'Val'
+    loop_msg = 'Train' if loop_type == 'train' else 'Val  '
+    # Add some color
+    loop_msg = Fore.YELLOW + loop_msg if loop_type == 'train' else Fore.GREEN + loop_msg
+    prec     = Fore.CYAN + prec if not adv else Fore.RED + prec
 
     # switch to train/eval mode depending
     model = model.train() if is_train else model.eval()
@@ -448,13 +453,17 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
 
         if has_attr(args, "regularizer"):
             reg_desc = regs.avg
+            # ITERATOR
+            desc = ('{2} Epoch:{0}{3} | Loss {loss.avg:.4f} | '
+                    '{1}1{3} {top1_acc:.3f} | {1}5{3} {top5_acc:.3f} | '
+                    'Reg term: {reg:.4f} ||'.format( epoch, prec, loop_msg, Style.RESET_ALL,
+                    loss=losses, top1_acc=top1_acc, top5_acc=top5_acc, reg=reg_desc))
         else:
-            reg_desc = reg_term
-        # ITERATOR
-        desc = ('{2} Epoch:{0} | Loss {loss.avg:.4f} | '
-                '{1}1 {top1_acc:.3f} | {1}5 {top5_acc:.3f} | '
-                'Reg term: {reg:.4f} ||'.format( epoch, prec, loop_msg, 
-                loss=losses, top1_acc=top1_acc, top5_acc=top5_acc, reg=reg_desc))
+            # ITERATOR
+            desc = ('{2} Epoch:{0}{3} | Loss {loss.avg:.4f} | '
+                    '{1}1{3} {top1_acc:.3f} | {1}5{3} {top5_acc:.3f} '
+                    '||'.format( epoch, prec, loop_msg, Style.RESET_ALL,
+                    loss=losses, top1_acc=top1_acc, top5_acc=top5_acc))
 
         # USER-DEFINED HOOK
         if has_attr(args, 'iteration_hook'):

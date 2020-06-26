@@ -380,12 +380,12 @@ class SVHN(DataSet):
         """
         ds_kwargs = {
             'num_classes': 10,
-            'mean': ch.tensor([0.4914, 0.4822, 0.4465]),
-            'std': ch.tensor([0.2023, 0.1994, 0.2010]),
+            'mean': ch.tensor([0.0]),
+            'std': ch.tensor([1.0]),
             'custom_class': datasets.SVHN,
             'label_mapping': None, 
-            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(32),
-            'transform_test': da.TEST_TRANSFORMS_DEFAULT(32)
+            'transform_train': transforms.ToTensor(),
+            'transform_test': transforms.ToTensor()
         }
         super(SVHN, self).__init__('svhn', data_path, **ds_kwargs)
 
