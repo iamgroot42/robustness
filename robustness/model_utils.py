@@ -2,6 +2,7 @@ import torch as ch
 import dill
 import os
 from .tools import helpers, constants
+from .tools.misc import log_statement
 from .attacker import AttackerModel
 
 class FeatureExtractor(ch.nn.Module):
@@ -67,7 +68,7 @@ def make_and_restore_model(*_, arch, dataset, resume_path=None,
     checkpoint = None
     if resume_path:
         if os.path.isfile(resume_path):
-            print("=> loading checkpoint '{}'".format(resume_path))
+            log_statement("=> loading checkpoint '{}'".format(resume_path))
             checkpoint = ch.load(resume_path, pickle_module=dill)
             
             # Makes us able to load models saved with legacy versions
@@ -82,7 +83,7 @@ def make_and_restore_model(*_, arch, dataset, resume_path=None,
                 model = ch.nn.DataParallel(model)
             model = model.cuda()
 
-            print("=> loaded checkpoint '{}' (epoch {})".format(resume_path, checkpoint['epoch']))
+            log_statement("=> loaded checkpoint '{}' (epoch {})".format(resume_path, checkpoint['epoch']))
         else:
             error_msg = "=> no checkpoint found at '{}'".format(resume_path)
             raise ValueError(error_msg)

@@ -2,6 +2,7 @@ import argparse
 
 from . import cifar_models
 from .tools import folder
+from .tools.misc import log_statement
 
 import os
 if int(os.environ.get("NOTEBOOK_MODE", 0)) == 1:
@@ -36,7 +37,7 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
     >>> train_loader, val_loader = cifar_dataset.make_loaders(workers=10, batch_size=128)
     >>> # train_loader and val_loader are just PyTorch dataloaders
     '''
-    print(f"==> Preparing dataset {dataset}..")
+    log_statement(f"==> Preparing dataset {dataset}..")
     transform_train, transform_test = transforms
     if not data_aug:
         transform_train = transform_test
