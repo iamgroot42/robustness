@@ -22,10 +22,11 @@ setup(
   # Versions should comply with PEP440.  For a discussion on single-sourcing
   # the version across setup.py and the project code, see
   # https://packaging.python.org/en/latest/single_source_version.html
-  version='1.0.post1',
+  version='1.2',
 
   description='Tools for Robustness',
   long_description=long_description,
+  long_description_content_type='text/x-rst',
 
   # The project's main homepage.
   #url='https://github.com/',
@@ -83,7 +84,10 @@ setup(
   #  your project is installed. For an analysis of "install_requires" vs pip's
   #  requirements files see:
   #  https://packaging.python.org/en/latest/requirements.html
-  install_requires=['tqdm', 'grpcio', 'psutil', 'gitpython','py3nvml'],
+  install_requires=['tqdm', 'grpcio', 'psutil', 'gitpython','py3nvml', 'cox',
+		    'scikit-learn', 'seaborn', 'torch', 'torchvision', 'pandas',
+		    'numpy', 'scipy', 'GPUtil', 'dill', 'tensorboardX', 'tables',
+		    'matplotlib'],
   test_suite='nose.collector',
   tests_require=['nose'],
 )

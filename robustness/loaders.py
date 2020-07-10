@@ -24,8 +24,7 @@ from . import imagenet_models as models
 def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
                 custom_class=None, dataset="", label_mapping=None, subset=None,
                 subset_type='rand', subset_start=0, val_batch_size=None,
-                only_val=False, seed=1,
-                fixed_train_order=False, fixed_test_order=False):
+                only_val=False, shuffle_train=True, shuffle_val=True, seed=1):
     '''
     **INTERNAL FUNCTION**
 
@@ -75,12 +74,14 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
             test_set = custom_class(root=data_path, split='test', 
                                         download=True, transform=transform_test)
 
-    if subset is not None:
+    if not only_val:
+        attrs = ["samples", "train_data", "data"]
+        vals = {attr: hasattr(train_set, attr) for attr in attrs}
+        assert any(vals.values()), f"dataset must expose one of {attrs}"
+        train_sample_count = len(getattr(train_set,[k for k in vals if vals[k]][0]))
+
+    if (not only_val) and (subset is not None) and (subset <= train_sample_count):
         assert not only_val
-        try:
-            train_sample_count = len(train_set.samples)
-        except:
-            train_sample_count = len(train_set.train_data)
         if subset_type == 'rand':
             rng = np.random.RandomState(seed)
             subset = rng.choice(list(range(train_sample_count)), size=subset+subset_start, replace=False)
@@ -94,10 +95,10 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
 
     if not only_val:
         train_loader = DataLoader(train_set, batch_size=batch_size, 
-            shuffle=(not fixed_train_order), num_workers=workers, pin_memory=True)
+            shuffle=shuffle_train, num_workers=workers, pin_memory=True)
 
     test_loader = DataLoader(test_set, batch_size=val_batch_size, 
-            shuffle=(not fixed_test_order), num_workers=workers, pin_memory=True)
+            shuffle=shuffle_val, num_workers=workers, pin_memory=True)
 
     if only_val:
         return None, test_loader
@@ -195,7 +196,8 @@ class LambdaLoader:
         return getattr(self.data_loader, attr)
 
 def TransformedLoader(loader, func, transforms, workers=None, 
-        batch_size=None, do_tqdm=False, augment=False, fraction=1.0):
+        batch_size=None, do_tqdm=False, augment=False, fraction=1.0,
+        shuffle=True):
     '''
     This is a function that allows one to apply any given (fixed) 
     transformation to the output from the loader *once*. 
@@ -225,6 +227,8 @@ def TransformedLoader(loader, func, transforms, workers=None,
         fraction (float): fraction of image-label pairs in the output loader 
             which are transformed. The remainder is just original image-label 
             pairs from loader. 
+        shuffle (bool) : whether or not the resulting loader should shuffle every 
+            epoch (defaults to True)
 
     Returns:
         A loader and validation loader according to the
@@ -256,4 +260,4 @@ def TransformedLoader(loader, func, transforms, workers=None,
 
     dataset = folder.TensorDataset(ch.cat(new_ims, 0), ch.cat(new_targs, 0), transform=transforms)
     return ch.utils.data.DataLoader(dataset, num_workers=workers, 
-                                    batch_size=batch_size)
+                        batch_size=batch_size, shuffle=shuffle)

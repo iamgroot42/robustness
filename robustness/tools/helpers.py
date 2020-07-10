@@ -35,24 +35,6 @@ def calc_est_grad(func, x, y, rad, num_samples):
         grad = (l.view(2*Q, B, *extender) * noise.view(2*Q, B, *noise.shape[1:])).mean(dim=0)
     return grad
 
-
-def calc_fadein_eps(epoch, fadein_length, eps):
-    """
-    Calculate an epsilon by fading in from zero.
-
-    Args:
-        epoch (int) : current epoch of training.
-        fadein_length (int) : number of epochs to fade in for.
-        eps (float) : the final epsilon
-
-    Returns:
-        The correct epsilon for the current epoch, based on eps=0 and epoch
-        zero and eps=eps at epoch :samp:`fadein_length` 
-    """
-    if fadein_length and fadein_length > 0:
-        eps = eps * min(float(epoch) / fadein_length, 1)
-    return eps
-
 def ckpt_at_epoch(num):
     return '%s_%s' % (num, constants.CKPT_NAME)
 
@@ -155,11 +137,6 @@ class DataPrefetcher():
             if type(self.stop_after) is int and (count > self.stop_after):
                 break
 
-def save_checkpoint(state, is_best, filename):
-    ch.save(state, filename, pickle_module=dill)
-    if is_best:
-        shutil.copyfile(filename, filename + constants.BEST_APPEND)
-
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
@@ -187,6 +164,9 @@ def get_label_mapping(dataset_name, ranges):
     elif dataset_name == 'binary_cifar':
         def label_mapping(classes, class_to_idx):
             return restricted_binary_mapping(classes, class_to_idx, index_clusters=ranges)
+    elif dataset_name == 'custom_imagenet':
+        def label_mapping(classes, class_to_idx):
+            return custom_label_mapping(classes, class_to_idx, ranges=ranges)
     else:
         raise ValueError('No such dataset_name %s' % dataset_name)
 
@@ -216,4 +196,15 @@ def restricted_binary_mapping(classes, class_to_idx, index_clusters):
                 mapping[class_name] = new_idx
     filtered_classes = list(mapping.keys()).sort()
     print(filtered_classes, mapping)
+    return filtered_classes, mapping
+
+def custom_label_mapping(classes, class_to_idx, ranges):
+
+    mapping = {}
+    for class_name, idx in class_to_idx.items():
+        for new_idx, range_set in enumerate(ranges):
+            if idx in range_set:
+                mapping[class_name] = new_idx
+
+    filtered_classes = list(mapping.keys()).sort()
     return filtered_classes, mapping

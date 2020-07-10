@@ -4,6 +4,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from ..tools.custom_modules import FakeReLU
 
 class FakeReLU(torch.autograd.Function):
     @staticmethod
@@ -89,19 +90,17 @@ class DenseNet(nn.Module):
         out = self.trans3(self.dense3(out))
         out = self.dense4(out)
         if fake_relu:
-            out = F.avg_pool2d(F.relu(self.bn(out)), 4)
-        else:
             out = F.avg_pool2d(FakeReLU.apply(self.bn(out)), 4)
+        else:
+            out = F.avg_pool2d(F.relu(self.bn(out)), 4)
         out = out.view(out.size(0), -1)
-        latent = out
+        latent = out.clone()
 
         if just_latent: return out
 
         out = self.linear(out)
-
         if with_latent:
             return out, latent
-
         return out
 
 def DenseNet121(**kwargs):
@@ -129,5 +128,3 @@ def test():
     x = torch.randn(1,3,32,32)
     y = net(x)
     print(y)
-
-# test()

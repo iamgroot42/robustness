@@ -103,13 +103,15 @@ reference. Functionality provided by the library includes:
    # Train a model
    train.train_model(train_args, m, (train_loader, val_loader), store=out_store)
 
+**Note**: ``robustness`` requires PyTorch to be installed with CUDA support.
+
 Pretrained models
---------
+-----------------
 
 Along with the training code, we release a number of pretrained models for
 different datasets, norms and ε-train values. This list will be updated as
 we release more or improved models. *Please cite this library (see bibtex
-entry below) if you use these models in your research.*
+entry below) if you use these models in your research.* 
 
 For each (model, ε-test) combination we evaluate 20-step and 100-step PGD with a
 step size of `2.5 * ε-test / num_steps`. Since these two accuracies are quite 
@@ -117,10 +119,18 @@ close to each other, we do not consider more steps of PGD.
 For each value of ε-test, we highlight the best robust accuracy achieved over
 different ε-train in bold.
 
-(Note that we did not perform any hyperparameter tuning and simply used the same
+**Note #1**: We did not perform any hyperparameter tuning and simply used the same
 hyperparameters as standard training. It is likely that exploring different 
 training hyperparameters will increasse these robust accuracies by a few percent
-points.)
+points.
+
+**Note #2**: The pytorch checkpoint (``.pt``) files below were saved with the following versions of PyTorch and Dill:
+
+.. code-block::
+
+  torch==1.1.0
+  dill==0.2.9
+
 
 CIFAR10 L2-norm (ResNet50):
 
@@ -220,17 +230,21 @@ follows:
    
    @misc{robustness,
       title={Robustness (Python Library)},
-      author={Logan Engstrom and Andrew Ilyas and Shibani Santurkar and Dimitris Tsipras},
+      author={Logan Engstrom and Andrew Ilyas and Hadi Salman and Shibani Santurkar and Dimitris Tsipras},
       year={2019},
       url={https://github.com/MadryLab/robustness}
    }
 
 *(Have you used the package and found it useful? Let us know!)*.
 
-Contributors
+Maintainers
 -------------
 - `Andrew Ilyas <https://twitter.com/andrew_ilyas>`_
 - `Logan Engstrom <https://twitter.com/logan_engstrom>`_
 - `Shibani Santurkar <https://twitter.com/ShibaniSan>`_
 - `Dimitris Tsipras <https://twitter.com/tsiprasd>`_
+- `Hadi Salman <https://twitter.com/hadisalmanX>`_
 
+Contributors/Commiters
+'''''''''''''''''''''''
+- See `here <https://github.com/MadryLab/robustness/pulse>`_ 

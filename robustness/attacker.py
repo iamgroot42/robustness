@@ -43,7 +43,8 @@ STEPS = {
     '2': attack_steps.L2Step,
     '1': attack_steps.L1Step,
     'unconstrained': attack_steps.UnconstrainedStep,
-    'fourier': attack_steps.FourierStep
+    'fourier': attack_steps.FourierStep,
+    'random_smooth': attack_steps.RandomStep
 }
 
 class Attacker(ch.nn.Module):
@@ -74,7 +75,7 @@ class Attacker(ch.nn.Module):
                 targeted=False, custom_loss=None, should_normalize=True,
                 orig_input=None, use_best=True, return_image=True, est_grad=None,
                 percentile_range=(0.8, 0.995), custom_best=None,
-                random_restart_targets=None):
+                random_restart_targets=None, mixed_precision=False):
         """
         Implementation of forward (finds adversarial examples). Note that
         this does **not** perform inference and should not be called
@@ -127,7 +128,8 @@ class Attacker(ch.nn.Module):
                 loss (need not be the function being optimized)
             random_restart_targets (ch.tensor) : if provided, use for calculation of
                 accuracy instead of given targets (for random_restarts)
-
+            mixed_precision (bool) : if True, use mixed-precision calculations
+                to compute the adversarial examples / do the inference.
         Returns:
             An adversarial example for x (i.e. within a feasible set
             determined by `eps` and `constraint`, but classified as:
@@ -139,7 +141,6 @@ class Attacker(ch.nn.Module):
             from the unit ball, and then use :math:`\delta_{N/2+i} =
             -\delta_{i}`.
         """
-
         # Can provide a different input to make the feasible set around
         # instead of the initial point
         if orig_input is None: orig_input = x.detach()
@@ -149,7 +150,7 @@ class Attacker(ch.nn.Module):
         m = -1 if targeted else 1
 
         # Initialize step class and attacker criterion
-        criterion = ch.nn.CrossEntropyLoss(reduction='none').cuda()
+        criterion = ch.nn.CrossEntropyLoss(reduction='none')
         step_class = STEPS[constraint] if isinstance(constraint, str) else constraint
         step = step_class(eps=eps, orig_input=orig_input, step_size=step_size, percentile_range=percentile_range)
 
@@ -184,7 +185,7 @@ class Attacker(ch.nn.Module):
             def replace_best(loss, bloss, x, bx):
                 if bloss is None:
                     bx = x.clone().detach()
-                    bloss = losses.clone().detach()
+                    bloss = loss.clone().detach()
                 else:
                     if custom_best is None:
                         replace = m * bloss < m * loss
@@ -205,7 +206,12 @@ class Attacker(ch.nn.Module):
                 loss = ch.mean(losses)
 
                 if step.use_grad:
-                    if est_grad is None:
+                    if (est_grad is None) and mixed_precision:
+                        with amp.scale_loss(loss, []) as sl:
+                            sl.backward()
+                        grad = x.grad.detach()
+                        x.grad.zero_()
+                    elif (est_grad is None):
                         grad, = ch.autograd.grad(m * loss, [x])
                     else:
                         f = lambda _x, _y: m * calc_loss(step.to_image(_x), _y)[0]
@@ -273,8 +279,8 @@ class AttackerModel(ch.nn.Module):
         out = model(x) # normal inference (no label needed)
 
     More code examples available in the documentation for `forward`.
-    For a more comprehensive overview of this class, see `our detailed
-    walkthrough <../example_usage/input_space_manipulation>`_
+    For a more comprehensive overview of this class, see 
+    :doc:`our detailed walkthrough <../example_usage/input_space_manipulation>`.
     """
     def __init__(self, model, dataset):
         super(AttackerModel, self).__init__()
@@ -337,26 +343,24 @@ class AttackerModel(ch.nn.Module):
             if this_layer_input >= this_layer_output:
                 raise ValueError("Cannot extract output of layer before input layer")
 
-        if with_image:
-            # Run normalization only when input is being fed to actual input layer
-            if this_layer_input:
-                normalized_inp = inp
-            else:
-                normalized_inp = self.normalizer(inp)
-
-            if no_relu and (not with_latent):
-                print("WARNING: 'no_relu' has no visible effect if 'with_latent is False.")
-            if no_relu and fake_relu:
-                raise ValueError("Options 'no_relu' and 'fake_relu' are exclusive")
-
-            output = self.model(normalized_inp, with_latent=with_latent,
-                                    fake_relu=fake_relu, no_relu=no_relu,
-                                    injection=injection,
-                                    this_layer_input=this_layer_input,
-                                    this_layer_output=this_layer_output,
-                                    just_latent=just_latent)
+        # Run normalization only when input is being fed to actual input layer
+        if this_layer_input:
+            normalized_inp = inp
         else:
-            output = None
+            normalized_inp = self.normalizer(inp)
 
-        return (output, inp)
+        if no_relu and (not with_latent):
+            print("WARNING: 'no_relu' has no visible effect if 'with_latent is False.")
+        if no_relu and fake_relu:
+            raise ValueError("Options 'no_relu' and 'fake_relu' are exclusive")
 
+        output = self.model(normalized_inp, with_latent=with_latent,
+                                fake_relu=fake_relu, no_relu=no_relu,
+                                injection=injection,
+                                this_layer_input=this_layer_input,
+                                this_layer_output=this_layer_output,
+                                just_latent=just_latent)
+
+        if with_image:
+            return (output, inp)
+        return output
