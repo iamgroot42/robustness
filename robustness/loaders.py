@@ -18,7 +18,6 @@ import torch.utils.data
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 from . import imagenet_models as models
 
 def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
@@ -75,7 +74,7 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
                                         download=True, transform=transform_test)
 
     if not only_val:
-        attrs = ["samples", "train_data", "data"]
+        attrs = ["samples", "train_data", "data", "attr"]
         vals = {attr: hasattr(train_set, attr) for attr in attrs}
         assert any(vals.values()), f"dataset must expose one of {attrs}"
         train_sample_count = len(getattr(train_set,[k for k in vals if vals[k]][0]))

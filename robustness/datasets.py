@@ -9,6 +9,7 @@ Currently supported datasets:
 - CIFAR-10 (:class:`robustness.datasets.CIFAR`)
 - CINIC-10 (:class:`robustness.datasets.CINIC`)
 - SVHN (:class:`robustness.datasets.SVHN`)
+- STL-10 (:class:`robustness.datasets.STL10`)
 - A2B: horse2zebra, summer2winter_yosemite, apple2orange
   (:class:`robustness.datasets.A2B`)
 
@@ -20,7 +21,7 @@ import pathlib
 
 import torch as ch
 import torch.utils.data
-from . import imagenet_models, cifar_models
+from . import imagenet_models, cifar_models, stl10_models
 from torchvision import transforms, datasets
 
 from .tools import constants
@@ -39,6 +40,8 @@ from .tools.helpers import get_label_mapping
 ## - CIFAR
 ## - CINIC
 ## - SVHN
+## - STL10
+## - CelebA
 ## - A2B (orange2apple, horse2zebra, etc)
 ###
 
@@ -486,6 +489,68 @@ class SVHN(DataSet):
         return cifar_models.__dict__[arch](num_classes=self.num_classes)
 
 
+class STL10(DataSet):
+    """
+    `STL10 <https://cs.stanford.edu/~acoates/stl10/>`_ Dataset.
+    """
+    def __init__(self, data_path='/tmp/', **kwargs):
+        """
+        """
+        ds_kwargs = {
+            'num_classes': 10,
+            'mean': ch.tensor([0.0]),
+            'std': ch.tensor([1.0]),
+            'custom_class': datasets.STL10,
+            'label_mapping': None, 
+            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(96),
+            'transform_test': da.TEST_TRANSFORMS_DEFAULT(96)
+        }
+        super(STL10, self).__init__('svhn', data_path, **ds_kwargs)
+
+    def get_model(self, arch, pretrained):
+        """
+        """
+        if pretrained:
+            raise ValueError('STL10 does not support pytorch_pretrained=True')
+        return stl10_models.__dict__[arch](num_classes=self.num_classes)
+
+
+class CelebA(DataSet):
+    '''
+    ImageNet Dataset [DDS+09]_.
+
+    Requires ImageNet in ImageFolder-readable format. 
+    ImageNet can be downloaded from http://www.image-net.org. See
+    `here <https://pytorch.org/docs/master/torchvision/datasets.html#torchvision.datasets.ImageFolder>`_
+    for more information about the format.
+
+    .. [DDS+09] Deng, J., Dong, W., Socher, R., Li, L., Li, K., & Fei-Fei, L. (2009).
+    ImageNet: A large-scale hierarchical image database.
+    2009 IEEE Conference on Computer Vision and Pattern Recognition, 248-255.
+
+    '''
+    def __init__(self, data_path, **kwargs):
+        """
+        """
+        ds_kwargs = {
+            'num_classes': 40,
+            'mean': ch.tensor([0.5]),
+            'std': ch.tensor([0.5]),
+            'custom_class': datasets.CelebA,
+            'label_mapping': None,
+            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(160),
+            'transform_test': da.TEST_TRANSFORMS_DEFAULT(160)
+        }
+        ds_kwargs = self.override_args(ds_kwargs, kwargs)
+        super(CelebA, self).__init__('celeba', data_path, **ds_kwargs)
+
+    def get_model(self, arch, pretrained):
+        """
+        """
+        return imagenet_models.__dict__[arch](num_classes=self.num_classes, 
+                                        pretrained=pretrained)
+
+
 class A2B(DataSet):
     """
     A-to-B datasets [ZPI+17]_
@@ -574,6 +639,7 @@ DATASETS = {
     'robustcifar': RobustCIFAR,
     'cinic': CINIC,
     'svhn': SVHN,
+    'celeba': CelebA,
     'a2b': A2B,
     'places365': Places365,
     'openimages': OpenImages
