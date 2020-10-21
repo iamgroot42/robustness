@@ -538,8 +538,8 @@ class CelebA(DataSet):
             'std': ch.tensor([0.5]),
             'custom_class': datasets.CelebA,
             'label_mapping': None,
-            'transform_train': da.TRAIN_TRANSFORMS_DEFAULT(160),
-            'transform_test': da.TEST_TRANSFORMS_DEFAULT(160)
+            'transform_train': da.BASIC_TOTENSOR_TRANSFORM, # da.TRAIN_TRANSFORMS_DEFAULT(160),
+            'transform_test': da.BASIC_TOTENSOR_TRANSFORM #da.TEST_TRANSFORMS_DEFAULT(160)
         }
         ds_kwargs = self.override_args(ds_kwargs, kwargs)
         super(CelebA, self).__init__('celeba', data_path, **ds_kwargs)

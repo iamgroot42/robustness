@@ -88,3 +88,9 @@ Generic test data transform (no augmentation) to complement
 :meth:`robustness.data_augmentation.TEST_TRANSFORMS_DEFAULT`, takes in an image
 side length.
 """
+
+
+BASIC_TOTENSOR_TRANSFORM = transforms.ToTensor()
+"""
+Basic transform to leave data untouched. Only convert to tensor
+"""
